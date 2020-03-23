@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torchvision
 from PIL import Image
 from torch.optim.lr_scheduler import StepLR
 from torchvision import datasets, transforms
@@ -20,6 +21,11 @@ def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
+        
+        # tiled_images = torchvision.utils.make_grid(data)
+        # img = transforms.ToPILImage()(tiled_images)
+        # img.show()
+
         optimizer.zero_grad()
         output = model(data)
         loss = F.nll_loss(output, target)
@@ -49,6 +55,8 @@ def test(args, model, device, test_loader):
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
 
+    return correct/len(test_loader.dataset)
+
 
 def image_load(inp):
     result = Image.open(inp)
@@ -66,10 +74,11 @@ def main():
         transforms.RandomVerticalFlip(),
         transforms.RandomHorizontalFlip(),
         transforms.Resize(size=128),
+        transforms.Grayscale(),
         transforms.ToTensor()
     ])
     
-    dataset = datasets.DatasetFolder(root='./data/', loader=image_load, transform=tranformations, extensions=('jpg',))
+    dataset = datasets.DatasetFolder(root='datasets/hand_gestures', loader=image_load, transform=tranformations, extensions=('jpg',))
 
     train_proportion = 0.9
     train_length = math.floor(len(dataset)*train_proportion)
@@ -84,9 +93,12 @@ def main():
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+    accuracy = 0
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
-        test(args, model, device, test_loader)
+        accuracy = test(args, model, device, test_loader)
+        if accuracy > 0.95:
+            break
         scheduler.step()
 
     if args.save_model:
@@ -100,7 +112,7 @@ def parse_args():
                         help='input batch size for training')
     parser.add_argument('--test-batch-size', type=int, default=8, metavar='N',
                         help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=14, metavar='N',
+    parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
                         help='learning rate (default: 1.0)')

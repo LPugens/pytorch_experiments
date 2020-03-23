@@ -1,29 +1,33 @@
 import torch
 import torchvision
-from util import initialize_torch
+from PIL import Image
+from torchvision import transforms
+
 from net import Net
+from util import initialize_torch
+
 
 def main():
     _, device = initialize_torch()
 
     model = Net().to(device)
-    model.load_state_dict(torch.load("mnist_cnn.pt"))
+    model.load_state_dict(torch.load("model.pt"))
 
-    data_path = './data/'
-    train_dataset = torchvision.datasets.DatasetFolder(
-        root=data_path,
-        transform=torchvision.transforms.ToTensor()
-    )
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=16,
-        num_workers=1,
-        shuffle=True
-    )
+    tranformations = transforms.Compose([
+        transforms.RandomRotation(degrees=180),
+        transforms.RandomVerticalFlip(),
+        transforms.RandomHorizontalFlip(),
+        transforms.Resize(size=128),
+        transforms.Grayscale(),
+        transforms.ToTensor()
+    ])
 
-    for batch_idx, (data, target) in enumerate(train_loader):
-    model()
-
+    img = Image.open('WIN_20200323_12_34_23_Pro.jpg')
+    img_tensor = tranformations(img)
+    print(img_tensor.shape)
+    img_tensor.unsqueeze(-1)
+    print(img_tensor.shape)
+    print(model(img_tensor))
 
 if __name__ == "__main__":
     main()
