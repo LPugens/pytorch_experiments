@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import argparse
 import math
 import pickle
@@ -17,14 +15,10 @@ from net import Net
 from util import initialize_torch
 
 
-def train(args, model, device, train_loader, optimizer, epoch):
+def train_epoch(args, model, device, train_loader, optimizer, epoch):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
-        
-        # tiled_images = torchvision.utils.make_grid(data)
-        # img = transforms.ToPILImage()(tiled_images)
-        # img.show()
 
         optimizer.zero_grad()
         output = model(data)
@@ -45,8 +39,10 @@ def test(args, model, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            # sum up batch loss
+            test_loss += F.nll_loss(output, target, reduction='sum').item()
+            # get the index of the max log-probability
+            pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
@@ -74,15 +70,13 @@ def main():
         transforms.RandomVerticalFlip(),
         transforms.RandomHorizontalFlip(),
         transforms.Resize(size=128),
-        # transforms.Grayscale(),
         transforms.ToTensor(),
         transforms.Normalize((0,), (1,)),
     ])
-    
-    dataset = datasets.DatasetFolder(root='datasets/everything', loader=image_load, transform=tranformations, extensions=('jpg',))
 
-    train_proportion = 0.9
-    train_length = math.floor(len(dataset)*train_proportion)
+    dataset = datasets.DatasetFolder(root=args.dataset_path, loader=image_load, transform=tranformations, extensions=('jpg',))
+
+    train_length = math.floor(len(dataset)*args.train_proportion)
     test_length = math.ceil(len(dataset) - train_length)
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, (train_length, test_length))
 
@@ -90,33 +84,36 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
-    # model = Net().to(device)
-    model = torchvision.models.vgg19_bn(pretrained=True).to(device)
-    # for param in list(model.parameters())[:-1]:
-    #     param.requires_grad = False
-    model.classifier = nn.Sequential(
-        nn.Linear(25088, 128),
-        nn.Dropout(0.4),
-        nn.Linear(128, 4),     
-        nn.ReLU(),                
-        nn.LogSoftmax(dim=1)
-    )
-    print(model)
-''
+    model = generate_model(device, dataset)
+
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
     accuracy = 0
     last_accuracies = [0]*5
     for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, optimizer, epoch)
+        train_epoch(args, model, device, train_loader, optimizer, epoch)
         torch.save(model.state_dict(), "model.pt")
         accuracy = test(args, model, device, test_loader)
         del last_accuracies[0]
         last_accuracies += [accuracy]
-        if average(last_accuracies) > 0.95:
+        if average(last_accuracies) > args.stop_accuracy:
             break
         scheduler.step()
+
+def generate_model(device, dataset):
+    model = torchvision.models.vgg19_bn(pretrained=True).to(device)
+    model.classifier = nn.Sequential(
+        nn.Linear(25088, 128),
+        nn.BatchNorm1d(128),
+        nn.Dropout(0.4),
+        nn.Linear(128, len(dataset.classes)),
+        nn.BatchNorm1d(len(dataset.classes)),
+        nn.ReLU(),
+        nn.LogSoftmax(dim=1)
+    )
+    return model
+
 
 def average(last_accuracies):
     return sum(last_accuracies)/len(last_accuracies)
@@ -141,7 +138,12 @@ def parse_args():
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                         help='how many batches to wait before logging training status')
-
+    parser.add_argument('--train-proportion', type=float, default=0.9,
+                        help='Defines the dataset proportion to be used during train. The test proportion is 1-(train-proportion)')
+    parser.add_argument('--dataset-path', type=str, default='datasets/everything',
+                        help='The dataset path containing images from each class in each folder')
+    parser.add_argument('--stop-accuracy', type=float, default=0.95,
+                        help='The stop criteria accuracy.')
     parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
     args = parser.parse_args()
