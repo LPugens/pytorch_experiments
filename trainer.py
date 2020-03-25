@@ -74,12 +74,12 @@ def main():
         transforms.RandomVerticalFlip(),
         transforms.RandomHorizontalFlip(),
         transforms.Resize(size=128),
-        transforms.Grayscale(),
+        # transforms.Grayscale(),
         transforms.ToTensor(),
         transforms.Normalize((0,), (1,)),
     ])
     
-    dataset = datasets.DatasetFolder(root='datasets/hand_gestures', loader=image_load, transform=tranformations, extensions=('jpg',))
+    dataset = datasets.DatasetFolder(root='datasets/everything', loader=image_load, transform=tranformations, extensions=('jpg',))
 
     train_proportion = 0.9
     train_length = math.floor(len(dataset)*train_proportion)
@@ -90,18 +90,36 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
-    model = Net().to(device)
+    # model = Net().to(device)
+    model = torchvision.models.vgg19_bn(pretrained=True).to(device)
+    # for param in list(model.parameters())[:-1]:
+    #     param.requires_grad = False
+    model.classifier = nn.Sequential(
+        nn.Linear(25088, 128),
+        nn.Dropout(0.4),
+        nn.Linear(128, 4),     
+        nn.ReLU(),                
+        nn.LogSoftmax(dim=1)
+    )
+    print(model)
+''
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
     accuracy = 0
+    last_accuracies = [0]*5
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         torch.save(model.state_dict(), "model.pt")
         accuracy = test(args, model, device, test_loader)
-        if accuracy > 0.95:
+        del last_accuracies[0]
+        last_accuracies += [accuracy]
+        if average(last_accuracies) > 0.95:
             break
         scheduler.step()
+
+def average(last_accuracies):
+    return sum(last_accuracies)/len(last_accuracies)
 
 
 def parse_args():
@@ -113,7 +131,7 @@ def parse_args():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train')
-    parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
