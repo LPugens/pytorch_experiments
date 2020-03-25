@@ -75,7 +75,8 @@ def main():
         transforms.RandomHorizontalFlip(),
         transforms.Resize(size=128),
         transforms.Grayscale(),
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        transforms.Normalize((0,), (1,)),
     ])
     
     dataset = datasets.DatasetFolder(root='datasets/hand_gestures', loader=image_load, transform=tranformations, extensions=('jpg',))
@@ -96,24 +97,22 @@ def main():
     accuracy = 0
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
+        torch.save(model.state_dict(), "model.pt")
         accuracy = test(args, model, device, test_loader)
         if accuracy > 0.95:
             break
         scheduler.step()
 
-    if args.save_model:
-        torch.save(model.state_dict(), "model.pt")
-
 
 def parse_args():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=16, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=8, metavar='N',
                         help='input batch size for training')
     parser.add_argument('--test-batch-size', type=int, default=8, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
-                        help='number of epochs to train (default: 14)')
+                        help='number of epochs to train')
     parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
