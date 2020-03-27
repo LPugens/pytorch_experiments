@@ -1,3 +1,5 @@
+import string
+import random
 import torch
 
 def initialize_torch(args=None):
@@ -11,3 +13,8 @@ def initialize_torch(args=None):
 
     device = torch.device("cuda" if use_cuda else "cpu")
     return use_cuda, device
+
+def random_string(string_length=10):
+    """Generate a random string of fixed length """
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for _ in range(string_length))

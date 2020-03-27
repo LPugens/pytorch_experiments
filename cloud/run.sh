@@ -25,6 +25,6 @@ gsutil cp -r gs://"$CS_BUCKET"/datasets ./datasets
 python3
 # Store the image in the Google Cloud Storage bucket and allow all users
 # to read it.
-gsutil cp -r output gs://"$CS_BUCKET"/"$OUTPUT_FOLDER"
+gsutil cp -r output gs://"$CS_BUCKET"
 
 # [END startup_script]
