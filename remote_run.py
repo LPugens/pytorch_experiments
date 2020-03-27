@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import googleapiclient.discovery
 
 from cloud.vm_handler import list_instances, VirtualMachine

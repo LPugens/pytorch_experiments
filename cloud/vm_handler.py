@@ -2,9 +2,10 @@ import os
 import time
 
 from typing import List
-from threading import Thread
+from threading import Thread, Lock
 from functools import partial
 
+compute_lock = Lock()
 
 class VirtualMachine():
     def __init__(self, name:str, project: str, zone:str):
@@ -73,26 +74,30 @@ class VirtualMachine():
             }
         }
 
-        operation = compute.instances().insert(
-            project=self.project,
-            zone=self.zone,
-            body=config).execute()
+        with compute_lock:
+            operation = compute.instances().insert(
+                project=self.project,
+                zone=self.zone,
+                body=config).execute()
+
+        operation_result = wait_completion(compute, self.project, self.zone, operation)
         
         self.logger.start_log(compute)
 
-        operation_result = wait_completion(compute, self.project, self.zone, operation)
         if 'error' in operation_result:
             raise Exception(operation_result['error'])
 
         return operation
 
     def delete(self, compute):
-        operation = compute.instances().delete(
-            project=self.project,
-            zone=self.zone,
-            instance=self.name).execute()
+        with compute_lock:
+            operation = compute.instances().delete(
+                project=self.project,
+                zone=self.zone,
+                instance=self.name).execute()
 
         operation_result = wait_completion(compute, self.project, self.zone, operation)
+
         if 'error' in operation_result:
             raise Exception(operation_result['error'])
 
@@ -116,18 +121,24 @@ class VirtualMachineSerialLogger():
 
     def stop_log(self):
         self.log = False
-        self.thread.join()
+        if self.thread.is_alive():
+            self.thread.join()
 
     def log_procedure(self, compute):
         seeker = 0
         while self.log:
             try:
-                output = compute.instances().getSerialPortOutput(project=self.project, zone=self.zone, instance=self.name, start=seeker).execute()
+                with compute_lock:
+                    output = compute.instances().getSerialPortOutput(project=self.project, zone=self.zone, instance=self.name, start=seeker).execute()
+
+                wait_completion(compute, self.project, self.zone, output)
+
                 seeker = output['next']
                 print(output[''])
-            except Exception as e:
-                print(e)
+            except Exception as _:
+                print('VM not available')
             time.sleep(1)
+        print('\n\n\nFINISHED LOGGING')
 
 def operation_status(compute, project, zone, operation):
     result = compute.zoneOperations().get(
@@ -139,7 +150,8 @@ def operation_status(compute, project, zone, operation):
 
 
 def list_instances(compute, project, zone) -> List[str]:
-    result = compute.instances().list(project=project, zone=zone).execute()
+    with compute_lock:
+        result = compute.instances().list(project=project, zone=zone).execute()
     return result['items'] if 'items' in result else []
 
 
@@ -147,7 +159,8 @@ def wait_completion(compute, project, zone, operation):
     print(f'WAITING: {operation}')
     done = False
     while not done:
-        result = operation_status(compute, project, zone, operation['name'])
+        with compute_lock:
+            result = operation_status(compute, project, zone, operation['name'])
         done = result['status'] == 'DONE'
-    
+    print(result)
     return result
