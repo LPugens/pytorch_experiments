@@ -131,11 +131,10 @@ class VirtualMachineSerialLogger():
                 with compute_lock:
                     output = compute.instances().getSerialPortOutput(project=self.project, zone=self.zone, instance=self.name, start=seeker).execute()
 
-                wait_completion(compute, self.project, self.zone, output)
-
                 seeker = output['next']
-                print(output[''])
-            except Exception as _:
+                print(output['contents'])
+            except Exception as e:
+                print(f"HERE -> {e}")
                 print('VM not available')
             time.sleep(1)
         print('\n\n\nFINISHED LOGGING')
@@ -156,11 +155,10 @@ def list_instances(compute, project, zone) -> List[str]:
 
 
 def wait_completion(compute, project, zone, operation):
-    print(f'WAITING: {operation}')
     done = False
     while not done:
         with compute_lock:
             result = operation_status(compute, project, zone, operation['name'])
+            time.sleep(0.1)
         done = result['status'] == 'DONE'
-    print(result)
     return result

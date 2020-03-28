@@ -3,6 +3,7 @@ import googleapiclient.discovery
 from cloud.vm_handler import list_instances, VirtualMachine
 from util import random_string
 from threading import Thread
+from time import sleep
 
 
 project = 'pugens2'
@@ -23,4 +24,7 @@ try:
 except Exception as e:
     print(e)
 finally:
+    sleep(10)
     vm.delete(compute)
+
+print("DONE")
