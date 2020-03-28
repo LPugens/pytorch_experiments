@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import StepLR
 from torchvision import datasets, transforms
 
 from net import Net
-from util import initialize_torch
+from util import initialize_torch, create_dir_if_not_exists
 
 
 def train_epoch(args, model, device, train_loader, optimizer, epoch):
@@ -25,7 +25,7 @@ def train_epoch(args, model, device, train_loader, optimizer, epoch):
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
-        if batch_idx % args.log_interval == 0:
+        if batch_idx % 10 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
@@ -63,6 +63,9 @@ def main():
     # Training settings
     args = parse_args()
 
+    dir_name = 'output'
+    create_dir_if_not_exists(dir_name)
+
     use_cuda, device = initialize_torch(args)
 
     tranformations = transforms.Compose([
@@ -76,7 +79,8 @@ def main():
 
     dataset = datasets.DatasetFolder(root=args.dataset_path, loader=image_load, transform=tranformations, extensions=('jpg',))
 
-    train_length = math.floor(len(dataset)*args.train_proportion)
+    train_proportion = 0.9
+    train_length = math.floor(len(dataset)*train_proportion)
     test_length = math.ceil(len(dataset) - train_length)
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, (train_length, test_length))
 
@@ -93,7 +97,7 @@ def main():
     last_accuracies = [0]*5
     for epoch in range(1, args.epochs + 1):
         train_epoch(args, model, device, train_loader, optimizer, epoch)
-        torch.save(model.state_dict(), "model.pt")
+        torch.save(model.state_dict(), "output/model.pt")
         accuracy = test(args, model, device, test_loader)
         del last_accuracies[0]
         last_accuracies += [accuracy]
@@ -132,20 +136,12 @@ def parse_args():
                         help='learning rate (default: 1.0)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
-                        help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--log-interval', type=int, default=1, metavar='N',
-                        help='how many batches to wait before logging training status')
-    parser.add_argument('--train-proportion', type=float, default=0.9,
-                        help='Defines the dataset proportion to be used during train. The test proportion is 1-(train-proportion)')
     parser.add_argument('--dataset-path', type=str, default='datasets/everything',
                         help='The dataset path containing images from each class in each folder')
-    parser.add_argument('--stop-accuracy', type=float, default=0.95,
+    parser.add_argument('--stop-accuracy', type=float, default=0.99,
                         help='The stop criteria accuracy.')
-    parser.add_argument('--save-model', action='store_true', default=True,
-                        help='For Saving the current Model')
     args = parser.parse_args()
     return args
 

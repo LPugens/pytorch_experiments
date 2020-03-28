@@ -19,6 +19,7 @@ while instance_name in instances:
     instance_name = random_string()
 
 vm = VirtualMachine(instance_name, project, zone)
+input('Press ENTER to finish the VM')
 try:
     vm.instantiate(compute, bucket, repository)
 except Exception as e:

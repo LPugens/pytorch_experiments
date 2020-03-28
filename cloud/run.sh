@@ -22,7 +22,8 @@ cd Lucas_Master || exit
 
 gsutil cp -r gs://"$CS_BUCKET"/datasets ./datasets
 
-python3
+python trainer.py
+
 # Store the image in the Google Cloud Storage bucket and allow all users
 # to read it.
 gsutil cp -r output gs://"$CS_BUCKET"

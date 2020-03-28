@@ -1,6 +1,7 @@
 import string
 import random
 import torch
+import os
 
 def initialize_torch(args=None):
     if args is not None:
@@ -18,3 +19,11 @@ def random_string(string_length=10):
     """Generate a random string of fixed length """
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for _ in range(string_length))
+
+def create_dir_if_not_exists(dir_name):
+    try:
+        # Create target Directory
+        os.mkdir(dir_name)
+        print("Directory " , dir_name ,  " Created ") 
+    except FileExistsError:
+        print("Directory " , dir_name ,  " already exists")
