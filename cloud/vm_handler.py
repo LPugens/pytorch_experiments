@@ -132,7 +132,7 @@ class VirtualMachineSerialLogger():
                     output = compute.instances().getSerialPortOutput(project=self.project, zone=self.zone, instance=self.name, start=seeker).execute()
 
                 seeker = output['next']
-                print(output['contents'])
+                print(output['contents'], end='', flush=True)
             except Exception as e:
                 print(f"HERE -> {e}")
                 print('VM not available')

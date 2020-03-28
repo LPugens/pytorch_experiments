@@ -9,7 +9,7 @@ from time import sleep
 project = 'pugens2'
 zone = 'us-central1-f'
 bucket = 'datasets_pugens'
-repository = 'git@github.com:LPugens/pytorch_experiments.git'
+repository = 'https://github.com/LPugens/pytorch_experiments'
 
 
 compute = googleapiclient.discovery.build('compute', 'v1')
@@ -19,13 +19,13 @@ while instance_name in instances:
     instance_name = random_string()
 
 vm = VirtualMachine(instance_name, project, zone)
-input('Press ENTER to finish the VM')
 try:
     vm.instantiate(compute, bucket, repository)
+    input('Press ENTER to finish the VM')
 except Exception as e:
     print(e)
 finally:
-    sleep(10)
+    print('FINISHING THE VM')
     vm.delete(compute)
 
 print("DONE")
