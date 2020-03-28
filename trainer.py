@@ -138,7 +138,7 @@ def parse_args():
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--dataset-path', type=str, default='datasets/',
+    parser.add_argument('--dataset-path', type=str, default='data/',
                         help='The dataset path containing images from each class in each folder')
     parser.add_argument('--stop-accuracy', type=float, default=0.99,
                         help='The stop criteria accuracy.')

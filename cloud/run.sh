@@ -20,7 +20,7 @@ cd pytorch_experiments || exit
 /miniconda3/bin/conda env create --file environment.yml
 # /miniconda3/bin/conda activate env_torch
 
-gsutil cp -r gs://"$CS_BUCKET"/data ./datasets
+gsutil cp -r "gs://$CS_BUCKET/data" ./
 
 /miniconda3/envs/env_torch/bin/python trainer.py
 
