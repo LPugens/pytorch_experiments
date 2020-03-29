@@ -4,16 +4,20 @@ import time
 from typing import List
 from threading import Thread, Lock
 from functools import partial
+from ssh_handler import SSHHandler
 
 compute_lock = Lock()
 
 class VirtualMachine():
-    def __init__(self, name:str, project: str, zone:str, machine_type: str):
+    def __init__(self, name:str, project: str, zone:str, machine_type: str, use_gpu: bool):
         self.alive = False
         self.project = project
         self.name = name
         self.zone = zone
         self.machine_type = machine_type
+        self.use_gpu = use_gpu
+        self.ip = None
+        self.ssh_handler = None
         self.logger = VirtualMachineSerialLogger(name, project, zone)
 
     def instantiate(self, compute, bucket, repository):
@@ -22,17 +26,12 @@ class VirtualMachine():
 
         # Configure the machine
         machine_type = f"zones/{self.zone}/machineTypes/{self.machine_type}"
-        startup_script = open(os.path.join(os.path.dirname(__file__), 'run.sh'), 'r').read()
+        # startup_script = open(os.path.join(os.path.dirname(__file__), 'run.sh'), 'r').read()
 
         config = {
             'name': self.name,
             'machineType': machine_type,
-            "guestAccelerators": [
-                {
-                "acceleratorType": f'projects/{self.project}/zones/{self.zone}/acceleratorTypes/nvidia-tesla-v100',
-                "acceleratorCount": 1
-                }
-            ],
+
             "scheduling": {
                 "onHostMaintenance": 'terminate',
                 "automaticRestart": False,
@@ -81,21 +80,29 @@ class VirtualMachine():
 
             # Metadata is readable from the instance and allows you to
             # pass configuration from deployment scripts to instances.
-            'metadata': {
-                'items': [{
-                    # Startup script is automatically executed by the
-                    # instance upon startup.
-                    'key': 'startup-script',
-                    'value': startup_script
-                }, {
-                    'key': 'bucket',
-                    'value': bucket
-                }, {
-                    'key': 'repository',
-                    'value': repository
-                }]
-            }
+            # 'metadata': {
+            #     'items': [{
+            #         # Startup script is automatically executed by the
+            #         # instance upon startup.
+            #         'key': 'startup-script',
+            #         'value': startup_script
+            #     }, {
+            #         'key': 'bucket',
+            #         'value': bucket
+            #     }, {
+            #         'key': 'repository',
+            #         'value': repository
+            #     }]
+            # }
         }
+
+        if self.use_gpu:
+            config["guestAccelerators"] = [
+                {
+                "acceleratorType": f'projects/{self.project}/zones/{self.zone}/acceleratorTypes/nvidia-tesla-v100',
+                "acceleratorCount": 1
+                }
+            ],
 
         with compute_lock:
             operation = compute.instances().insert(
@@ -104,11 +111,15 @@ class VirtualMachine():
                 body=config).execute()
 
         operation_result = wait_completion(compute, self.project, self.zone, operation)
+        print(operation_result)
         
         self.logger.start_log(compute)
 
         if 'error' in operation_result:
             raise Exception(operation_result['error'])
+        
+        instance_info = compute.instances().list(project='pugens2', zone='us-central1-a', filter=f'name:{self.name}').execute()
+        self.ip = instance_info['items'][0]['networkInterfaces'][0]['accessConfigs'][0]['natIP']
 
         return operation
 
@@ -127,6 +138,15 @@ class VirtualMachine():
         self.logger.stop_log()
 
         return operation
+
+    def run_script(self, script_path: str):
+        f = open(script_path, 'r')
+        script = f.read()
+        f.close()
+        self.ssh_handler = SSHHandler(self.ip)
+        self.ssh_handler.connect()
+        self.ssh_handler.run(f'bash -s < {script}')
+        self.ssh_handler.disconnect()
 
 
 class VirtualMachineSerialLogger():

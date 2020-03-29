@@ -8,9 +8,10 @@ from time import sleep
 
 project = 'pugens2'
 zone = 'us-central1-a'
-machine_type = 'n1-standard-4'
+machine_type = 'n1-standard-1'
 bucket = 'datasets_pugens'
 repository = 'https://github.com/LPugens/pytorch_experiments'
+use_gpu = False
 
 
 compute = googleapiclient.discovery.build('compute', 'v1')
@@ -19,9 +20,10 @@ instance_name = random_string()
 while instance_name in instances:
     instance_name = random_string()
 
-vm = VirtualMachine(instance_name, project, zone, machine_type)
+vm = VirtualMachine(name=instance_name, project=project, zone=zone, machine_type=machine_type, use_gpu=use_gpu)
 try:
     vm.instantiate(compute, bucket, repository)
+    vm.run_script('cloud/startup_enviornment.sh')
     input('Press ENTER to finish the VM')
 except Exception as e:
     print(e)

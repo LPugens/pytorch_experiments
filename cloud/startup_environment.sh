@@ -13,6 +13,7 @@ curl -O http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_6
 dpkg -i cuda-repo-ubuntu1804_10.1.243-1_amd64.deb
 apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
 apt-get update
+apt-get -y install nvidia-driver-435
 apt-get -y install cuda
 
 
@@ -28,7 +29,7 @@ cd pytorch_experiments || exit
 /miniconda3/bin/conda env create --file environment.yml
 # /miniconda3/bin/conda activate env_torch
 
-gsutil cp -r "gs://$CS_BUCKET/data" ./
+gsutil -m cp -r "gs://$CS_BUCKET/data" ./
 
 /miniconda3/envs/env_torch/bin/python trainer.py
 
