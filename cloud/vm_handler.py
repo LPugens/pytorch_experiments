@@ -115,6 +115,8 @@ class VirtualMachineSerialLogger():
         self.zone = zone
         self.log = False
         self.thread = None
+        self.log_file = 'log.txt'
+        open(self.log_file, 'w')
 
     def start_log(self, compute):
         self.log = True
@@ -135,6 +137,9 @@ class VirtualMachineSerialLogger():
 
                 seeker = output['next']
                 print(output['contents'], end='', flush=True)
+                f = open(self.log_file, 'a')
+                f.write(output['contents'])
+                f.close()
             except Exception as e:
                 print(f"HERE -> {e}")
                 print('VM not available')
