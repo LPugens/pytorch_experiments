@@ -27,13 +27,34 @@ class VirtualMachine():
         config = {
             'name': self.name,
             'machineType': machine_type,
-            'accelerator': ['nvidia-tesla-k80', 1],
+            "guestAccelerators": [
+                {
+                "acceleratorType": f'projects/{self.project}/zones/{self.zone}/acceleratorTypes/nvidia-tesla-v100',
+                "acceleratorCount": 1
+                }
+            ],
+            "scheduling": {
+                "onHostMaintenance": 'terminate',
+                "automaticRestart": False,
+                # "preemptible": boolean,
+                # "nodeAffinities": [
+                # {
+                #     "key": string,
+                #     "operator": enum,
+                #     "values": [
+                #     string
+                #     ]
+                # }
+                # ]
+            },
 
             # Specify the boot disk and the image to use as a source.
             'disks': [
                 {
                     'boot': True,
                     'autoDelete': True,
+                    "diskSizeGb": '50',
+                    'diskType': f'https://www.googleapis.com/compute/v1/projects/{self.project}/zones/{self.zone}/diskTypes/local-ssd',
                     'initializeParams': {
                         'sourceImage': source_disk_image,
                     }

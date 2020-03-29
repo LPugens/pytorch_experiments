@@ -9,6 +9,7 @@ def initialize_torch(args=None):
         use_cuda = True
         print('Found CUDA-able. Using CUDA!')
     else:
+        print('Not found CUDA-able. Not using CUDA!')
         use_cuda = False
 
     if args is not None:
