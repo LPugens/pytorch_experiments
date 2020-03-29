@@ -7,8 +7,8 @@ from time import sleep
 
 
 project = 'pugens2'
-zone = 'us-central1-f'
-machine_type = 'e2-highcpu-16'
+zone = 'us-central1-a'
+machine_type = 'n1-standard-1'
 bucket = 'datasets_pugens'
 repository = 'https://github.com/LPugens/pytorch_experiments'
 
