@@ -99,13 +99,14 @@ def main():
     last_accuracies = [0]*5
     for epoch in range(1, args.epochs + 1):
         train_epoch(args, model, device, train_loader, optimizer, epoch)
-        torch.save(model.state_dict(), "output/model.pt")
         accuracy = test(args, model, device, test_loader)
         del last_accuracies[0]
         last_accuracies += [accuracy]
         if average(last_accuracies) > args.stop_accuracy:
             break
         scheduler.step()
+    
+    torch.save(model.state_dict(), "output/model.pt")
 
 def generate_model(device, dataset):
     model = torchvision.models.vgg19_bn(pretrained=True).to(device)
