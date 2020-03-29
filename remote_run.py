@@ -23,9 +23,11 @@ while instance_name in instances:
 vm = VirtualMachine(name=instance_name, project=project, zone=zone, machine_type=machine_type, use_gpu=use_gpu)
 try:
     vm.instantiate(compute, bucket, repository)
-    vm.run_script('cloud/startup_enviornment.sh')
+    vm.run_script('cloud/startup_environment.sh')
     input('Press ENTER to finish the VM')
 except Exception as e:
+    vm.logger.stop_log()
+    print('The following uncaugth exception caused the abortion of the VM:')
     print(e)
 finally:
     print('FINISHING THE VM')

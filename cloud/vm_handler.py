@@ -4,7 +4,7 @@ import time
 from typing import List
 from threading import Thread, Lock
 from functools import partial
-from ssh_handler import SSHHandler
+from .ssh_handler import SSHHandler
 
 compute_lock = Lock()
 
@@ -17,6 +17,7 @@ class VirtualMachine():
         self.machine_type = machine_type
         self.use_gpu = use_gpu
         self.ip = None
+        self.ssh_enabled = False
         self.ssh_handler = None
         self.logger = VirtualMachineSerialLogger(name, project, zone)
 
@@ -111,15 +112,18 @@ class VirtualMachine():
                 body=config).execute()
 
         operation_result = wait_completion(compute, self.project, self.zone, operation)
-        print(operation_result)
         
         self.logger.start_log(compute)
 
         if 'error' in operation_result:
             raise Exception(operation_result['error'])
         
-        instance_info = compute.instances().list(project='pugens2', zone='us-central1-a', filter=f'name:{self.name}').execute()
-        self.ip = instance_info['items'][0]['networkInterfaces'][0]['accessConfigs'][0]['natIP']
+        while self.ip is None:
+            try:
+                instance_info = compute.instances().list(project='pugens2', zone='us-central1-a', filter=f'name:{self.name}').execute()
+                self.ip = instance_info['items'][0]['networkInterfaces'][0]['accessConfigs'][0]['natIP']
+            except Exception as _:
+                pass
 
         return operation
 
@@ -140,6 +144,14 @@ class VirtualMachine():
         return operation
 
     def run_script(self, script_path: str):
+        t0 = time.time()
+        while not self.ssh_enabled:
+            if time.time() - t0 > 60:
+                raise TimeoutError()
+            self.ssh_enabled = open('log.txt', 'r').read().find('Started OpenBSD Secure Shell server.') > 0
+            time.sleep(1)
+            print('Waiting SSH server to start...')
+
         f = open(script_path, 'r')
         script = f.read()
         f.close()
@@ -182,7 +194,7 @@ class VirtualMachineSerialLogger():
                 f.write(output['contents'])
                 f.close()
             except Exception as e:
-                print(f"HERE -> {e}")
+                print(f"{e}")
                 print('VM not available')
             time.sleep(1)
         print('\n\n\nFINISHED LOGGING')
