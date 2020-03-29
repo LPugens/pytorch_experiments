@@ -8,11 +8,12 @@ from functools import partial
 compute_lock = Lock()
 
 class VirtualMachine():
-    def __init__(self, name:str, project: str, zone:str):
+    def __init__(self, name:str, project: str, zone:str, machine_type: str):
         self.alive = False
         self.project = project
         self.name = name
         self.zone = zone
+        self.machine_type = machine_type
         self.logger = VirtualMachineSerialLogger(name, project, zone)
 
     def instantiate(self, compute, bucket, repository):
@@ -20,7 +21,7 @@ class VirtualMachine():
         source_disk_image = image_response['selfLink']
 
         # Configure the machine
-        machine_type = f"zones/{self.zone}/machineTypes/n1-standard-1"
+        machine_type = f"zones/{self.zone}/machineTypes/{self.machine_type}"
         startup_script = open(os.path.join(os.path.dirname(__file__), 'run.sh'), 'r').read()
 
         config = {

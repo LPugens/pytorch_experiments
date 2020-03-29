@@ -63,6 +63,8 @@ def main():
     # Training settings
     args = parse_args()
 
+    print('STARTING TRAINING')
+
     dir_name = 'output'
     create_dir_if_not_exists(dir_name)
 

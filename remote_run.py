@@ -8,6 +8,7 @@ from time import sleep
 
 project = 'pugens2'
 zone = 'us-central1-f'
+machine_type = 'e2-highcpu-16'
 bucket = 'datasets_pugens'
 repository = 'https://github.com/LPugens/pytorch_experiments'
 
@@ -18,7 +19,7 @@ instance_name = random_string()
 while instance_name in instances:
     instance_name = random_string()
 
-vm = VirtualMachine(instance_name, project, zone)
+vm = VirtualMachine(instance_name, project, zone, machine_type)
 try:
     vm.instantiate(compute, bucket, repository)
     input('Press ENTER to finish the VM')
