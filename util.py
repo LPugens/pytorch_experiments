@@ -5,6 +5,11 @@ import os
 
 def initialize_torch(args=None):
     use_cuda = torch.cuda.is_available()
+    if torch.cuda.is_available():
+        use_cuda = True
+        print('Found CUDA-able. Using CUDA!')
+    else:
+        use_cuda = False
 
     if args is not None:
         torch.manual_seed(args.seed)

@@ -27,6 +27,7 @@ class VirtualMachine():
         config = {
             'name': self.name,
             'machineType': machine_type,
+            'accelerator': ['nvidia-tesla-k80', 1],
 
             # Specify the boot disk and the image to use as a source.
             'disks': [
