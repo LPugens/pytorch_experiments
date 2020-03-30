@@ -5,4 +5,4 @@ __pycache__
 **.jpg
 datasets
 
-log.txt
+*log.txt

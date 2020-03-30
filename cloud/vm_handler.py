@@ -18,7 +18,7 @@ class VirtualMachine():
         self.use_gpu = use_gpu
         self.ip = None
         self.ssh_enabled = False
-        self.last_ssh_up_position = -1
+        self.last_ssh_up_position = None
         self.logger = VirtualMachineSerialLogger(name, project, zone)
 
     def instantiate(self, compute, bucket, repository):
@@ -129,6 +129,7 @@ class VirtualMachine():
 
     def reboot(self):
         print(f'REBOOTING VM')
+        self.wait_ssh_up()
 
         ssh_handler = SSHHandler(self.ip)
         ssh_handler.connect()
@@ -174,11 +175,16 @@ class VirtualMachine():
 
     def wait_ssh_up(self):
         t0 = time.time()
+        started_string = 'INFO Finished running startup scripts.'
         while not self.ssh_enabled:
-            if time.time() - t0 > 60*5:
+            if time.time() - t0 > 60*10:
                 raise TimeoutError('Server took too long to start SSH service')
-            ssh_up_position = open('log.txt', 'r').read().find('systemd[1]: Startup finished in', self.last_ssh_up_position+1)
-            if ssh_up_position > self.last_ssh_up_position:
+            if self.last_ssh_up_position is None:
+                ssh_up_position = open('log.txt', 'r').read().find(started_string)
+            else:
+                ssh_up_position = open('log.txt', 'r').read().find(started_string, self.last_ssh_up_position+1)
+
+            if ssh_up_position > 0:
                 self.ssh_enabled = True
                 self.last_ssh_up_position = ssh_up_position
             else:

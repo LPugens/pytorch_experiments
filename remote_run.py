@@ -27,15 +27,17 @@ try:
     vm.instantiate(compute, bucket, repository)
     vm.send_files('./cloud/startup_environment.sh')
     vm.send_files('./cloud/run_script.sh')
-    # vm.run_command('sudo ./startup_environment.sh')
+    vm.run_command('sudo ./startup_environment.sh')
     vm.reboot()
     vm.run_command('sudo ./run_script.sh')
     input('Press ENTER to finish the VM')
 except Exception as e:
     vm.logger.stop_log()
     print('The following uncaugth exception caused the abortion of the VM:')
+    print('-'*50)
     _, val, tb = sys.exc_info()
     print(traceback.print_exception(None, e, tb))
+    print('-'*50)
 finally:
     print('FINISHING THE VM')
     vm.delete(compute)
