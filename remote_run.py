@@ -1,3 +1,5 @@
+import sys, traceback
+
 import googleapiclient.discovery
 
 from cloud.vm_handler import list_instances, VirtualMachine
@@ -23,12 +25,17 @@ while instance_name in instances:
 vm = VirtualMachine(name=instance_name, project=project, zone=zone, machine_type=machine_type, use_gpu=use_gpu)
 try:
     vm.instantiate(compute, bucket, repository)
-    vm.run_script('cloud/startup_environment.sh')
+    vm.send_files('./cloud/startup_environment.sh')
+    vm.send_files('./cloud/run_script.sh')
+    # vm.run_command('sudo ./startup_environment.sh')
+    vm.reboot()
+    vm.run_command('sudo ./run_script.sh')
     input('Press ENTER to finish the VM')
 except Exception as e:
     vm.logger.stop_log()
     print('The following uncaugth exception caused the abortion of the VM:')
-    print(e)
+    _, val, tb = sys.exc_info()
+    print(traceback.print_exception(None, e, tb))
 finally:
     print('FINISHING THE VM')
     vm.delete(compute)

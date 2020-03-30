@@ -18,7 +18,7 @@ class VirtualMachine():
         self.use_gpu = use_gpu
         self.ip = None
         self.ssh_enabled = False
-        self.ssh_handler = None
+        self.last_ssh_up_position = -1
         self.logger = VirtualMachineSerialLogger(name, project, zone)
 
     def instantiate(self, compute, bucket, repository):
@@ -127,6 +127,17 @@ class VirtualMachine():
 
         return operation
 
+    def reboot(self):
+        print(f'REBOOTING VM')
+
+        ssh_handler = SSHHandler(self.ip)
+        ssh_handler.connect()
+        ssh_handler.run('sudo reboot now')
+        ssh_handler.disconnect()
+
+        self.ssh_enabled = False
+        self.wait_ssh_up()
+
     def delete(self, compute):
         with compute_lock:
             operation = compute.instances().delete(
@@ -142,23 +153,38 @@ class VirtualMachine():
         self.logger.stop_log()
 
         return operation
+    
+    def send_files(self, path:str):
+        print(f'SENDING {path}')
+        self.wait_ssh_up()
 
-    def run_script(self, script_path: str):
+        ssh_handler = SSHHandler(self.ip)
+        ssh_handler.connect()
+        ssh_handler.send_bulk_files(path)
+        ssh_handler.disconnect()
+
+    def run_command(self, script: str):
+        print(f'RUNNING {script}')
+        self.wait_ssh_up()
+
+        ssh_handler = SSHHandler(self.ip)
+        ssh_handler.connect()
+        ssh_handler.run(script)
+        ssh_handler.disconnect()
+
+    def wait_ssh_up(self):
         t0 = time.time()
         while not self.ssh_enabled:
-            if time.time() - t0 > 60:
-                raise TimeoutError()
-            self.ssh_enabled = open('log.txt', 'r').read().find('Started OpenBSD Secure Shell server.') > 0
+            if time.time() - t0 > 60*5:
+                raise TimeoutError('Server took too long to start SSH service')
+            ssh_up_position = open('log.txt', 'r').read().find('systemd[1]: Startup finished in', self.last_ssh_up_position+1)
+            if ssh_up_position > self.last_ssh_up_position:
+                self.ssh_enabled = True
+                self.last_ssh_up_position = ssh_up_position
+            else:
+                self.ssh_enabled = False
             time.sleep(1)
             print('Waiting SSH server to start...')
-
-        f = open(script_path, 'r')
-        script = f.read()
-        f.close()
-        self.ssh_handler = SSHHandler(self.ip)
-        self.ssh_handler.connect()
-        self.ssh_handler.run(f'bash -s < {script}')
-        self.ssh_handler.disconnect()
 
 
 class VirtualMachineSerialLogger():
@@ -169,7 +195,7 @@ class VirtualMachineSerialLogger():
         self.log = False
         self.thread = None
         self.log_file = 'log.txt'
-        open(self.log_file, 'w')
+        open(self.log_file, 'w').close()
 
     def start_log(self, compute):
         self.log = True
