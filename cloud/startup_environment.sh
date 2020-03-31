@@ -3,6 +3,7 @@
 # [START startup_script]
 CS_BUCKET="datasets_pugens"
 RESPOSITORY="https://github.com/LPugens/pytorch_experiments"
+CONDA="/home/lpugens/miniconda3/bin/conda activate env_torch"
 
 # Create a Google Cloud Storage bucket.
 # gsutil mb gs://"$CS_BUCKET"
@@ -27,7 +28,7 @@ git config --global user.name "LPugens GCLOUD"
 git config --global user.email "lucaspugensf@gmail.com"
 git clone "$RESPOSITORY"
 cd pytorch_experiments || exit
-/miniconda3/bin/conda env create --file environment.yml
+$CONDA env create --file environment.yml
 # /miniconda3/bin/conda activate env_torch
 
 gsutil -m cp -r "gs://$CS_BUCKET/data" ./

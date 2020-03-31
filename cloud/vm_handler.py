@@ -9,7 +9,7 @@ from .ssh_handler import SSHHandler
 compute_lock = Lock()
 
 class VirtualMachine():
-    def __init__(self, name:str, project: str, zone:str, machine_type: str, use_gpu: bool):
+    def __init__(self, name:str, project: str, zone:str, machine_type: str, use_gpu: bool, verbose: bool = False):
         self.alive = False
         self.project = project
         self.name = name
@@ -19,7 +19,8 @@ class VirtualMachine():
         self.ip = None
         self.ssh_enabled = False
         self.last_ssh_up_position = None
-        self.logger = VirtualMachineSerialLogger(name, project, zone)
+        self.verbose = verbose
+        self.logger = VirtualMachineSerialLogger(name, project, zone, verbose)
 
     def instantiate(self, compute, bucket, repository):
         image_response = compute.images().getFromFamily(project='gce-uefi-images', family='ubuntu-1804-lts').execute()
@@ -194,13 +195,14 @@ class VirtualMachine():
 
 
 class VirtualMachineSerialLogger():
-    def __init__(self, name, project, zone):
+    def __init__(self, name, project, zone, verbose):
         self.name = name
         self.project = project
         self.zone = zone
         self.log = False
         self.thread = None
         self.log_file = 'log.txt'
+        self.verbose = verbose
         open(self.log_file, 'w').close()
 
     def start_log(self, compute):
@@ -221,7 +223,8 @@ class VirtualMachineSerialLogger():
                     output = compute.instances().getSerialPortOutput(project=self.project, zone=self.zone, instance=self.name, start=seeker).execute()
 
                 seeker = output['next']
-                print(output['contents'], end='', flush=True)
+                if self.verbose:
+                    print(output['contents'], end='', flush=True)
                 f = open(self.log_file, 'a')
                 f.write(output['contents'])
                 f.close()

@@ -1,9 +1,10 @@
 
 CS_BUCKET="datasets_pugens"
+CONDA="/home/lpugens/miniconda3/bin/conda activate env_torch"
 
 cd pytorch_experiments
 
-conda activate env_torch
+$CONDA activate env_torch
 
 python trainer.py
 
