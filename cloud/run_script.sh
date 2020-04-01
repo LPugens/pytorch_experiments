@@ -1,12 +1,15 @@
+#!/bin/bash
+set -x
+
+CONDA="/home/lpugens/miniconda3/bin/conda"
+PYTHON_ENV_TORCH="/home/lpugens/miniconda3/envs/env_torch/bin/python"
 
 CS_BUCKET="datasets_pugens"
-CONDA="/home/lpugens/miniconda3/bin/conda activate env_torch"
 
 cd pytorch_experiments
 
-$CONDA activate env_torch
+$PYTHON_ENV_TORCH trainer.py --dataset-path ../data
 
-python trainer.py
+sudo gsutil cp -r output gs://"$CS_BUCKET"
 
-
-gsutil cp -r output gs://"$CS_BUCKET"
+exit

@@ -175,6 +175,7 @@ class VirtualMachine():
         ssh_handler.disconnect()
 
     def wait_ssh_up(self):
+        print('Waiting SSH server to start...')
         t0 = time.time()
         started_string = 'INFO Finished running startup scripts.'
         while not self.ssh_enabled:
@@ -191,7 +192,6 @@ class VirtualMachine():
             else:
                 self.ssh_enabled = False
             time.sleep(1)
-            print('Waiting SSH server to start...')
 
 
 class VirtualMachineSerialLogger():

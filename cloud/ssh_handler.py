@@ -9,11 +9,12 @@ class SSHHandler():
         self.ip = ip
         self.client = paramiko.SSHClient()
         self.username = 'lpugens'
+        self.log_file = 'ssh_log.txt'
         self.client.set_missing_host_key_policy(AutoAddPolicy)
 
     def connect(self):
-        self.client.load_system_host_keys()
         self.client.connect(self.ip, username=self.username)
+        open(self.log_file, 'w').close()
 
     def send_bulk_files(self, files):
         command = f'scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r {files} {self.username}@{self.ip}:~/'
@@ -27,10 +28,11 @@ class SSHHandler():
     def run(self, command:str):
         _, stdout, stderr = self.client.exec_command(command)
         print(f'$ {command}')
-        self.__print_std(stdout, '...')
-        self.__print_std(stderr, '!!!')
+        self.__print_std(stdout, f'({command}) ...')
+        self.__print_std(stderr, f'({command}) !!!')
     
     def __print_std(self, stdout, prefix):
         for line in stdout:
             line = line.strip('\n')
-            print(f'{prefix} {line}')
+            if not line.startswith('+ '):
+                print(f'{prefix} {line}')
