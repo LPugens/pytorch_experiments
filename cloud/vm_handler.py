@@ -1,12 +1,14 @@
 import os
 import time
+import sys, traceback
+
+
+import googleapiclient.discovery
 
 from typing import List
 from threading import Thread, Lock
 from functools import partial
-from .ssh_handler import SSHHandler
-
-compute_lock = Lock()
+from cloud.ssh_handler import SSHHandler
 
 class VirtualMachine():
     def __init__(self, name:str, project: str, zone:str, machine_type: str, use_gpu: bool, verbose: bool = False):
@@ -21,9 +23,10 @@ class VirtualMachine():
         self.last_ssh_up_position = None
         self.verbose = verbose
         self.logger = VirtualMachineSerialLogger(name, project, zone, verbose)
+        self.compute = googleapiclient.discovery.build('compute', 'v1')
 
-    def instantiate(self, compute, bucket, repository):
-        image_response = compute.images().getFromFamily(project='gce-uefi-images', family='ubuntu-1804-lts').execute()
+    def instantiate(self, bucket, repository):
+        image_response = self.compute.images().getFromFamily(project='gce-uefi-images', family='ubuntu-1804-lts').execute()
         source_disk_image = image_response['selfLink']
 
         # Configure the machine
@@ -36,17 +39,7 @@ class VirtualMachine():
 
             "scheduling": {
                 "onHostMaintenance": 'terminate',
-                "automaticRestart": False,
-                # "preemptible": boolean,
-                # "nodeAffinities": [
-                # {
-                #     "key": string,
-                #     "operator": enum,
-                #     "values": [
-                #     string
-                #     ]
-                # }
-                # ]
+                "automaticRestart": False
             },
 
             # Specify the boot disk and the image to use as a source.
@@ -78,24 +71,7 @@ class VirtualMachine():
                     'https://www.googleapis.com/auth/devstorage.read_write',
                     'https://www.googleapis.com/auth/logging.write'
                 ]
-            }],
-
-            # Metadata is readable from the instance and allows you to
-            # pass configuration from deployment scripts to instances.
-            # 'metadata': {
-            #     'items': [{
-            #         # Startup script is automatically executed by the
-            #         # instance upon startup.
-            #         'key': 'startup-script',
-            #         'value': startup_script
-            #     }, {
-            #         'key': 'bucket',
-            #         'value': bucket
-            #     }, {
-            #         'key': 'repository',
-            #         'value': repository
-            #     }]
-            # }
+            }]
         }
 
         if self.use_gpu:
@@ -106,22 +82,25 @@ class VirtualMachine():
                 }
             ],
 
-        with compute_lock:
-            operation = compute.instances().insert(
-                project=self.project,
-                zone=self.zone,
-                body=config).execute()
+        operation = self.compute.instances().insert(
+            project=self.project,
+            zone=self.zone,
+            body=config).execute()
 
-        operation_result = wait_completion(compute, self.project, self.zone, operation)
+        operation_result = wait_completion(self.compute, self.project, self.zone, operation)
         
-        self.logger.start_log(compute)
+        self.logger.start_log()
 
         if 'error' in operation_result:
             raise Exception(operation_result['error'])
         
+        timeout = 60
+        t0 = time.time()
         while self.ip is None:
+            if time.time() - t0 > timeout:
+                raise TimeoutError(f'The server IP was not available in less than {timeout}s')
             try:
-                instance_info = compute.instances().list(project='pugens2', zone='us-central1-a', filter=f'name:{self.name}').execute()
+                instance_info = self.compute.instances().list(project=self.project, zone=self.zone, filter=f'name:{self.name}').execute()
                 self.ip = instance_info['items'][0]['networkInterfaces'][0]['accessConfigs'][0]['natIP']
             except Exception as _:
                 pass
@@ -142,11 +121,10 @@ class VirtualMachine():
         self.wait_ssh_up()
 
     def delete(self, compute):
-        with compute_lock:
-            operation = compute.instances().delete(
-                project=self.project,
-                zone=self.zone,
-                instance=self.name).execute()
+        operation = compute.instances().delete(
+            project=self.project,
+            zone=self.zone,
+            instance=self.name).execute()
 
         operation_result = wait_completion(compute, self.project, self.zone, operation)
 
@@ -204,11 +182,12 @@ class VirtualMachineSerialLogger():
         self.thread = None
         self.log_file = 'log.txt'
         self.verbose = verbose
+        self.compute = googleapiclient.discovery.build('compute', 'v1')
         open(self.log_file, 'w').close()
 
-    def start_log(self, compute):
+    def start_log(self):
         self.log = True
-        self.thread = Thread(target=partial(self.log_procedure, compute))
+        self.thread = Thread(target=self.log_procedure)
         self.thread.start()
 
     def stop_log(self):
@@ -216,12 +195,11 @@ class VirtualMachineSerialLogger():
         if self.thread.is_alive():
             self.thread.join()
 
-    def log_procedure(self, compute):
+    def log_procedure(self):
         seeker = 0
         while self.log:
             try:
-                with compute_lock:
-                    output = compute.instances().getSerialPortOutput(project=self.project, zone=self.zone, instance=self.name, start=seeker).execute()
+                output = self.compute.instances().getSerialPortOutput(project=self.project, zone=self.zone, instance=self.name, start=seeker).execute()
 
                 seeker = output['next']
                 if self.verbose:
@@ -230,8 +208,11 @@ class VirtualMachineSerialLogger():
                 f.write(output['contents'])
                 f.close()
             except Exception as e:
-                print(f"{e}")
-                print('VM not available')
+                print('-'*50)
+                print('WARNING')
+                _, val, tb = sys.exc_info()
+                print(traceback.print_exception(None, e, tb))
+                print('-'*50)
             time.sleep(1)
         print('\n\n\nFINISHED LOGGING')
 
@@ -245,16 +226,14 @@ def operation_status(compute, project, zone, operation):
 
 
 def list_instances(compute, project, zone) -> List[str]:
-    with compute_lock:
-        result = compute.instances().list(project=project, zone=zone).execute()
+    result = compute.instances().list(project=project, zone=zone).execute()
     return result['items'] if 'items' in result else []
 
 
 def wait_completion(compute, project, zone, operation):
     done = False
     while not done:
-        with compute_lock:
-            result = operation_status(compute, project, zone, operation['name'])
-            time.sleep(0.1)
+        result = operation_status(compute, project, zone, operation['name'])
+        time.sleep(0.1)
         done = result['status'] == 'DONE'
     return result

@@ -13,7 +13,7 @@ zone = 'asia-east1-a'
 machine_type = 'n1-standard-1'
 bucket = 'datasets_pugens'
 repository = 'https://github.com/LPugens/pytorch_experiments'
-use_gpu = True
+use_gpu = False
 
 
 compute = googleapiclient.discovery.build('compute', 'v1')
@@ -24,7 +24,7 @@ while instance_name in instances:
 
 vm = VirtualMachine(name=instance_name, project=project, zone=zone, machine_type=machine_type, use_gpu=use_gpu)
 try:
-    vm.instantiate(compute, bucket, repository)
+    vm.instantiate( bucket, repository)
     # vm.send_files('./cloud/startup_environment.sh')
     # vm.send_files('./cloud/startup_conda.sh')
     # vm.send_files('./cloud/run_script.sh')

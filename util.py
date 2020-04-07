@@ -10,7 +10,6 @@ def initialize_torch(args=None):
         print('Found CUDA-able. Using CUDA!')
     else:
         raise EnvironmentError('CUDA not found!')
-        use_cuda = False
 
     if args is not None:
         torch.manual_seed(args.seed)
