@@ -101,7 +101,7 @@ class VirtualMachine():
         if self.use_gpu:
             config["guestAccelerators"] = [
                 {
-                "acceleratorType": f'projects/{self.project}/zones/{self.zone}/acceleratorTypes/nvidia-tesla-v100',
+                "acceleratorType": f'projects/{self.project}/zones/{self.zone}/acceleratorTypes/nvidia-tesla-k80',
                 "acceleratorCount": 1
                 }
             ],
@@ -125,6 +125,7 @@ class VirtualMachine():
                 self.ip = instance_info['items'][0]['networkInterfaces'][0]['accessConfigs'][0]['natIP']
             except Exception as _:
                 pass
+        print(self.ip)
 
         return operation
 

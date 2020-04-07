@@ -8,6 +8,8 @@ CS_BUCKET="datasets_pugens"
 
 cd pytorch_experiments
 
+nvidia-smi
+
 $PYTHON_ENV_TORCH trainer.py --dataset-path ../data
 
 sudo gsutil cp -r output gs://"$CS_BUCKET"
