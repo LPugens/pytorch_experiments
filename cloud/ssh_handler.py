@@ -34,6 +34,6 @@ class SSHHandler():
     def __print_std(self, stdout, prefix, show_inputs):
         for line in stdout:
             line = line.strip('\n')
-            if not show_inputs and line.startswith('+ '):
-                continue
+            # if not show_inputs and line.startswith('+ '):
+            #     continueccc
             print(f'{prefix} {line}')

@@ -11,7 +11,7 @@ from time import sleep
 project = 'pugens2'
 zone = 'asia-east1-a'
 machine_type = 'n1-standard-2'
-bucket = 'datasets_pugens'
+bucket = 'pugens-bucket'
 repository = 'https://github.com/LPugens/pytorch_experiments'
 use_gpu = True
 
