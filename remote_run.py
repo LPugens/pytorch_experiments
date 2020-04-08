@@ -10,7 +10,7 @@ from time import sleep
 
 project = 'pugens2'
 zone = 'asia-east1-a'
-machine_type = 'n1-standard-1'
+machine_type = 'n1-standard-2'
 bucket = 'datasets_pugens'
 repository = 'https://github.com/LPugens/pytorch_experiments'
 use_gpu = True
@@ -42,6 +42,6 @@ except Exception as e:
     print('-'*50)
 finally:
     print('FINISHING THE VM')
-    vm.delete(compute)
+    vm.delete()
 
 print("DONE")

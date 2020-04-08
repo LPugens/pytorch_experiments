@@ -120,13 +120,13 @@ class VirtualMachine():
         self.ssh_enabled = False
         self.wait_ssh_up()
 
-    def delete(self, compute):
-        operation = compute.instances().delete(
+    def delete(self):
+        operation = self.compute.instances().delete(
             project=self.project,
             zone=self.zone,
             instance=self.name).execute()
 
-        operation_result = wait_completion(compute, self.project, self.zone, operation)
+        operation_result = wait_completion(self.compute, self.project, self.zone, operation)
 
         if 'error' in operation_result:
             raise Exception(operation_result['error'])

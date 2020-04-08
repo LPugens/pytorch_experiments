@@ -11,8 +11,6 @@ sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/
 sudo apt-get update
 sudo apt-get install -y cuda
 
-
-
 apt-get update
 apt-get -y install git wget
 

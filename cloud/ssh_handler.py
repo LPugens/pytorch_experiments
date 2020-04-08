@@ -28,11 +28,12 @@ class SSHHandler():
     def run(self, command:str):
         _, stdout, stderr = self.client.exec_command(command)
         print(f'$ {command}')
-        self.__print_std(stdout, f'({command}) ...')
-        self.__print_std(stderr, f'({command}) !!!')
+        self.__print_std(stdout, f'({command}) ...', True)
+        self.__print_std(stderr, f'({command}) !!!', False)
     
-    def __print_std(self, stdout, prefix):
+    def __print_std(self, stdout, prefix, show_inputs):
         for line in stdout:
             line = line.strip('\n')
-            if not line.startswith('+ '):
-                print(f'{prefix} {line}')
+            if not show_inputs and line.startswith('+ '):
+                continue
+            print(f'{prefix} {line}')
